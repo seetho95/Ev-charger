@@ -4,6 +4,7 @@ import L from "leaflet";
 import type { Station } from "../types";
 import { availabilityStatus, type AvailabilityStatus, formatPricing, STATUS_COLOR } from "../utils/format";
 import { loadSavedMapStyleId, MAP_STYLES, saveMapStyleId } from "../data/mapStyles";
+import { MapSearchBar } from "./MapSearchBar";
 
 const MALAYSIA_CENTER: [number, number] = [4.2105, 108.9758];
 const MALAYSIA_ZOOM = 6;
@@ -203,7 +204,9 @@ export function MapView({
         <MapController station={selected} userLocation={userLocation} />
       </MapContainer>
 
-      <div className="absolute right-2.5 top-2.5 z-[1000] flex gap-1 rounded-lg bg-white/95 dark:bg-gray-900/95 p-1 shadow-md backdrop-blur">
+      <MapSearchBar onSelect={onSelect} />
+
+      <div className="absolute bottom-20 right-2.5 z-[1000] flex gap-1 rounded-lg bg-white/95 dark:bg-gray-900/95 p-1 shadow-md backdrop-blur">
         {MAP_STYLES.map((s) => (
           <button
             key={s.id}

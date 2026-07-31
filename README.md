@@ -7,8 +7,12 @@ availability, locations on a map, and a road-trip charging planner.
 
 - **Map view** of charging stations across Malaysia (OpenStreetMap/Leaflet
   tiles via CARTO), color-coded by bay availability, with 4 selectable basemap
-  styles (Minimal, Bare, Voyager, Dark — top-right control, remembered
-  between visits).
+  styles (Minimal, Bare, Voyager, Dark — bottom-right control, remembered
+  between visits) and a "Find a charging station…" search box overlaid on
+  the map itself (top-center) — type to get a live dropdown of matches with
+  distance, click one to fly straight to it. This is separate from the
+  sidebar's filter search: it doesn't narrow the list, just jumps to a
+  result.
 - **Filters** by network, state, connector type, and free-text search — the
   lists populate dynamically from whatever stations are actually loaded.
 - **Station details**: pricing (per kWh / per minute / flat / free / not

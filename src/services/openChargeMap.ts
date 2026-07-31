@@ -11,7 +11,7 @@ import type { Connector, ConnectorType, CurrentType, Station } from "../types";
  */
 
 const OCM_ENDPOINT = "https://api.openchargemap.io/v3/poi/";
-const FETCH_TIMEOUT_MS = 15_000;
+const FETCH_TIMEOUT_MS = 20_000;
 const MAX_ATTEMPTS = 2;
 const RETRY_DELAY_MS = 1_500;
 
@@ -122,10 +122,10 @@ async function fetchOnce(): Promise<Station[]> {
     const url = new URL(OCM_ENDPOINT);
     url.searchParams.set("output", "json");
     url.searchParams.set("countrycode", "MY");
-    // Kept modest rather than the full remote max — a smaller, faster
-    // response is more likely to complete within FETCH_TIMEOUT_MS on a
-    // mobile connection than a larger one that just times out instead.
-    url.searchParams.set("maxresults", "500");
+    // Malaysia's actual OCM entry count is well under this cap, so raising
+    // it costs nothing when the real dataset is smaller — it only matters
+    // if OCM genuinely has more than the old 500-result cap was truncating.
+    url.searchParams.set("maxresults", "3000");
     url.searchParams.set("compact", "true");
 
     const res = await fetch(url.toString(), {
