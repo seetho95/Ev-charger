@@ -47,3 +47,16 @@ export const STATUS_LABEL: Record<AvailabilityStatus, string> = {
 export function connectorSummary(station: Station): string {
   return station.connectors.map((c) => `${c.type} ${c.powerKW}kW ×${c.count}`).join(", ");
 }
+
+/**
+ * Google Maps' plain URL scheme (no API key needed — this just opens the
+ * Google Maps app/website, unlike the JS Maps SDK which does require one).
+ */
+export function googleMapsSearchUrl(station: Station): string {
+  const query = encodeURIComponent(`${station.name} ${station.lat},${station.lng}`);
+  return `https://www.google.com/maps/search/?api=1&query=${query}`;
+}
+
+export function googleMapsDirectionsUrl(station: Station): string {
+  return `https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`;
+}

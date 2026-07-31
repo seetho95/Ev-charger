@@ -12,11 +12,23 @@ import type { Connector, ConnectorType, CurrentType, Station } from "../types";
 
 const OCM_ENDPOINT = "https://api.openchargemap.io/v3/poi/";
 const FETCH_TIMEOUT_MS = 20_000;
-const MAX_ATTEMPTS = 2;
+const MAX_DIRECT_ATTEMPTS = 2;
 const RETRY_DELAY_MS = 1_500;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function buildOcmUrl(): string {
+  const url = new URL(OCM_ENDPOINT);
+  url.searchParams.set("output", "json");
+  url.searchParams.set("countrycode", "MY");
+  // Malaysia's actual OCM entry count is well under this cap, so raising it
+  // costs nothing when the real dataset is smaller — it only matters if OCM
+  // genuinely has more than a lower cap would have truncated.
+  url.searchParams.set("maxresults", "3000");
+  url.searchParams.set("compact", "true");
+  return url.toString();
 }
 
 interface OcmConnection {
@@ -114,21 +126,12 @@ export function mapPoiToStation(poi: OcmPoi): Station | null {
   };
 }
 
-async function fetchOnce(): Promise<Station[]> {
+async function fetchAndParse(url: string): Promise<Station[]> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    const url = new URL(OCM_ENDPOINT);
-    url.searchParams.set("output", "json");
-    url.searchParams.set("countrycode", "MY");
-    // Malaysia's actual OCM entry count is well under this cap, so raising
-    // it costs nothing when the real dataset is smaller — it only matters
-    // if OCM genuinely has more than the old 500-result cap was truncating.
-    url.searchParams.set("maxresults", "3000");
-    url.searchParams.set("compact", "true");
-
-    const res = await fetch(url.toString(), {
+    const res = await fetch(url, {
       signal: controller.signal,
       headers: { Accept: "application/json" },
     });
@@ -147,23 +150,35 @@ async function fetchOnce(): Promise<Station[]> {
  * Fetches Malaysian charging locations from Open Charge Map. Returns an
  * empty array (never throws) on network failure or malformed responses, so
  * callers can treat "no community data" the same as "fetch failed" and just
- * keep showing the curated dataset. Retries once after a short delay, since
- * a single dropped request on a mobile connection shouldn't hide the whole
- * community layer for the rest of the session.
+ * keep showing the curated dataset.
+ *
+ * Tries the direct request (with one retry) first. If that consistently
+ * fails — which, since this app has no backend to proxy through, most
+ * likely means the browser is blocking it as cross-origin (CORS) rather
+ * than a transient network hiccup — falls back to routing the same request
+ * through a public read-only CORS relay as a last resort before giving up.
  */
 export async function fetchOpenChargeMapStations(): Promise<Station[]> {
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+  const ocmUrl = buildOcmUrl();
+
+  for (let attempt = 1; attempt <= MAX_DIRECT_ATTEMPTS; attempt++) {
     try {
-      return await fetchOnce();
+      return await fetchAndParse(ocmUrl);
     } catch (err) {
-      const isLastAttempt = attempt === MAX_ATTEMPTS;
+      const isLastAttempt = attempt === MAX_DIRECT_ATTEMPTS;
       console.error(
-        `Open Charge Map fetch failed (attempt ${attempt}/${MAX_ATTEMPTS})${isLastAttempt ? ", giving up" : ", retrying"}:`,
+        `Open Charge Map direct fetch failed (attempt ${attempt}/${MAX_DIRECT_ATTEMPTS})${isLastAttempt ? ", trying a CORS relay" : ", retrying"}:`,
         err,
       );
-      if (isLastAttempt) return [];
-      await sleep(RETRY_DELAY_MS);
+      if (!isLastAttempt) await sleep(RETRY_DELAY_MS);
     }
   }
-  return [];
+
+  try {
+    const relayUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(ocmUrl)}`;
+    return await fetchAndParse(relayUrl);
+  } catch (err) {
+    console.error("Open Charge Map fetch via CORS relay also failed, giving up:", err);
+    return [];
+  }
 }

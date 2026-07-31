@@ -1,5 +1,12 @@
 import type { Station } from "../types";
-import { availabilityStatus, formatPricing, STATUS_COLOR, STATUS_LABEL } from "../utils/format";
+import {
+  availabilityStatus,
+  formatPricing,
+  googleMapsDirectionsUrl,
+  googleMapsSearchUrl,
+  STATUS_COLOR,
+  STATUS_LABEL,
+} from "../utils/format";
 
 interface StationDetailProps {
   station: Station | undefined;
@@ -82,14 +89,24 @@ export function StationDetail({ station, onClose }: StationDetailProps) {
         </div>
       )}
 
-      <a
-        className="inline-block text-sm text-blue-600 hover:underline"
-        href={`https://www.openstreetmap.org/?mlat=${station.lat}&mlon=${station.lng}#map=17/${station.lat}/${station.lng}`}
-        target="_blank"
-        rel="noreferrer"
-      >
-        Open in map →
-      </a>
+      <div className="flex gap-4">
+        <a
+          className="inline-block text-sm text-blue-600 hover:underline"
+          href={googleMapsSearchUrl(station)}
+          target="_blank"
+          rel="noreferrer"
+        >
+          View on Google Maps →
+        </a>
+        <a
+          className="inline-block text-sm text-blue-600 hover:underline"
+          href={googleMapsDirectionsUrl(station)}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Directions →
+        </a>
+      </div>
     </div>
   );
 }

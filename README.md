@@ -8,16 +8,17 @@ availability, locations on a map, and a road-trip charging planner.
 - **Map view** of charging stations across Malaysia (OpenStreetMap/Leaflet
   tiles via CARTO), color-coded by bay availability, with 4 selectable basemap
   styles (Minimal, Bare, Voyager, Dark — bottom-right control, remembered
-  between visits) and a "Find a charging station…" search box overlaid on
-  the map itself (top-center) — type to get a live dropdown of matches with
-  distance, click one to fly straight to it. This is separate from the
-  sidebar's filter search: it doesn't narrow the list, just jumps to a
-  result.
+  between visits).
+- **Search with live dropdown** (`src/components/StationSearchBox.tsx`), shown
+  both in the sidebar and floating over the map: typing narrows the visible
+  stations *and* shows a dropdown of best matches (with distance, if your
+  location is known) so you can jump straight to one, plus a link to run the
+  same search on Google Maps if it's not in this app's data.
 - **Filters** by network, state, connector type, and free-text search — the
   lists populate dynamically from whatever stations are actually loaded.
 - **Station details**: pricing (per kWh / per minute / flat / free / not
   listed), idle fees, connector types and power, operating hours, amenities,
-  and a bay availability snapshot.
+  a bay availability snapshot, and "View on Google Maps" / "Directions" links.
 - **Trip planner**: pick an origin and destination in Malaysia, set your
   vehicle's range/battery/charge targets, and get a road route with the
   minimum set of charging stops needed, including estimated charge time and
@@ -64,10 +65,14 @@ Open Charge Map, or via a curated entry you add yourself in
 made-up addresses for real networks would misdirect a driver, so the seed
 data doesn't include any until they're confirmed.
 
-If Open Charge Map is unreachable, the app silently falls back to the
-curated list only (with a small retry notice in the filter panel) — always
-consult the relevant operator's own app for guaranteed-accurate pricing and
-live availability.
+If Open Charge Map's direct API is unreachable — this app has no backend to
+proxy through, so a browser-side CORS restriction is the most likely cause
+on a real device, not just flakiness — it retries once, then falls back to
+routing the same request through a public CORS relay
+([allorigins.win](https://allorigins.win)) as a last resort before giving up
+and showing the curated list only (with a small retry notice in the filter
+panel). Always consult the relevant operator's own app for
+guaranteed-accurate pricing and live availability.
 
 To wire up real data later, replace/extend the body of `getStations()` in
 `src/services/stationSource.ts` — every other part of the app only depends

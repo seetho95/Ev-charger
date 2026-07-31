@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { type LocationStatus, NEAR_ME_RADIUS_KM, useAppStore } from "../store";
 import type { ConnectorType } from "../types";
+import { StationSearchBox } from "./StationSearchBox";
 
 const CONNECTOR_TYPES: ConnectorType[] = ["Type2", "CCS2", "CHAdeMO", "GB/T", "Tesla", "Other"];
 
@@ -14,7 +15,6 @@ export function FilterBar() {
   const toggleState = useAppStore((s) => s.toggleState);
   const toggleConnector = useAppStore((s) => s.toggleConnector);
   const setOnlyAvailable = useAppStore((s) => s.setOnlyAvailable);
-  const setSearch = useAppStore((s) => s.setSearch);
   const clearFilters = useAppStore((s) => s.clearFilters);
   const refreshAvailability = useAppStore((s) => s.refreshAvailability);
   const lastRefreshed = useAppStore((s) => s.lastRefreshed);
@@ -41,13 +41,7 @@ export function FilterBar() {
 
   return (
     <div className="space-y-3 text-sm">
-      <input
-        type="text"
-        placeholder="Search by name, mall, city..."
-        value={filters.search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-1.5 text-sm"
-      />
+      <StationSearchBox variant="inline" />
 
       <LocationBar
         status={locationStatus}
