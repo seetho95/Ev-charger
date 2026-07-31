@@ -8,6 +8,8 @@ import { TripPlanner } from "./components/TripPlanner";
 import { stationMatchesFilters, useAppStore } from "./store";
 import type { TripPlanResult } from "./types";
 
+type MobilePanel = "panel" | "map";
+
 function App() {
   const view = useAppStore((s) => s.view);
   const setView = useAppStore((s) => s.setView);
@@ -17,6 +19,7 @@ function App() {
   const selectStation = useAppStore((s) => s.selectStation);
 
   const [tripResult, setTripResult] = useState<TripPlanResult | null>(null);
+  const [mobilePanel, setMobilePanel] = useState<MobilePanel>("panel");
 
   const visibleStations =
     view === "map" ? stations.filter((s) => stationMatchesFilters(s, filters)) : stations;
@@ -25,23 +28,39 @@ function App() {
 
   return (
     <div className="flex h-screen w-screen flex-col bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
-      <header className="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 px-4 py-3">
-        <div>
-          <h1 className="text-lg font-semibold">MY EV Charge</h1>
-          <p className="text-xs text-gray-400">Malaysia EV charging station tracker</p>
+      <header className="flex items-center justify-between gap-2 border-b border-gray-200 dark:border-gray-800 px-3 py-2.5 sm:px-4 sm:py-3">
+        <div className="min-w-0">
+          <h1 className="text-base sm:text-lg font-semibold truncate">MY EV Charge</h1>
+          <p className="hidden sm:block text-xs text-gray-400">Malaysia EV charging station tracker</p>
         </div>
-        <nav className="flex gap-1 rounded-lg bg-gray-100 dark:bg-gray-800 p-1">
-          <TabButton active={view === "map"} onClick={() => setView("map")}>
+        <nav className="flex shrink-0 gap-1 rounded-lg bg-gray-100 dark:bg-gray-800 p-1">
+          <TabButton
+            active={view === "map"}
+            onClick={() => {
+              setView("map");
+              setMobilePanel("panel");
+            }}
+          >
             Explore
           </TabButton>
-          <TabButton active={view === "trip"} onClick={() => setView("trip")}>
+          <TabButton
+            active={view === "trip"}
+            onClick={() => {
+              setView("trip");
+              setMobilePanel("panel");
+            }}
+          >
             Trip Planner
           </TabButton>
         </nav>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        <aside className="w-96 shrink-0 overflow-y-auto border-r border-gray-200 dark:border-gray-800 p-4">
+      <div className="relative flex flex-1 overflow-hidden">
+        <aside
+          className={`${
+            mobilePanel === "panel" ? "flex" : "hidden"
+          } w-full flex-col overflow-y-auto border-gray-200 p-4 dark:border-gray-800 md:flex md:w-96 md:shrink-0 md:border-r`}
+        >
           {view === "map" ? (
             <div className="space-y-4">
               <FilterBar />
@@ -56,7 +75,7 @@ function App() {
           )}
         </aside>
 
-        <main className="flex-1">
+        <main className={`${mobilePanel === "map" ? "block" : "hidden"} flex-1 md:block`}>
           <MapView
             stations={visibleStations}
             selectedId={selectedStationId}
@@ -64,6 +83,13 @@ function App() {
             routeCoordinates={view === "trip" ? (tripResult?.routeCoordinates ?? undefined) : undefined}
           />
         </main>
+
+        <button
+          onClick={() => setMobilePanel(mobilePanel === "panel" ? "map" : "panel")}
+          className="absolute bottom-5 left-1/2 z-[1000] -translate-x-1/2 rounded-full bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-lg md:hidden"
+        >
+          {mobilePanel === "panel" ? "🗺️ Show map" : "☰ Show list"}
+        </button>
       </div>
     </div>
   );
