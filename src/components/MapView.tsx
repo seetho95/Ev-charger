@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Circle, MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
 import type { Station } from "../types";
 import { availabilityStatus, type AvailabilityStatus, formatPricing, STATUS_COLOR } from "../utils/format";
+import { loadSavedMapStyleId, MAP_STYLES, saveMapStyleId } from "../data/mapStyles";
 
 const MALAYSIA_CENTER: [number, number] = [4.2105, 108.9758];
 const MALAYSIA_ZOOM = 6;
@@ -65,22 +66,33 @@ function MapController({ station, userLocation }: { station: Station | undefined
     const t = targetRef.current;
     if (!t || lastKeyRef.current === t.key) return;
     lastKeyRef.current = t.key;
-    map.flyTo([t.lat, t.lng], t.zoom, { duration: 0.6 });
+    try {
+      map.flyTo([t.lat, t.lng], t.zoom, { duration: 0.6 });
+    } catch (err) {
+      // Leaflet can throw mid-animation if the container's geometry is still
+      // unsettled on a slow device; don't take the rest of the app down for it.
+      console.error("Map flyTo failed:", err);
+    }
   };
 
   useEffect(() => {
     const container = map.getContainer();
-    let flyTimeout: number | undefined;
+    let raf1 = 0;
+    let raf2 = 0;
     const observer = new ResizeObserver(() => {
       const hasSize = container.clientWidth > 0 && container.clientHeight > 0;
       if (hasSize) {
         map.invalidateSize();
         if (!hasSizeRef.current) {
           hasSizeRef.current = true;
-          // invalidateSize's own pixel-origin recalculation isn't synchronous
-          // with this callback; flyTo-ing immediately can animate toward a
-          // stale origin and land the view off-center. Give it a tick.
-          flyTimeout = window.setTimeout(flyToLatestIfNew, 50);
+          // invalidateSize's pixel-origin recalculation isn't guaranteed to be
+          // done by the time this callback returns; flyTo-ing immediately can
+          // animate toward a stale origin and land off-center (or throw on a
+          // slow device). Waiting two animation frames guarantees at least one
+          // full layout/paint cycle has completed first.
+          raf1 = requestAnimationFrame(() => {
+            raf2 = requestAnimationFrame(flyToLatestIfNew);
+          });
         }
       } else {
         hasSizeRef.current = false;
@@ -89,7 +101,8 @@ function MapController({ station, userLocation }: { station: Station | undefined
     observer.observe(container);
     return () => {
       observer.disconnect();
-      window.clearTimeout(flyTimeout);
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map]);
@@ -124,60 +137,88 @@ export function MapView({
     [stations, selectedId],
   );
 
+  const [styleId, setStyleId] = useState(loadSavedMapStyleId);
+  const style = MAP_STYLES.find((s) => s.id === styleId) ?? MAP_STYLES[0];
+
+  function chooseStyle(id: string) {
+    setStyleId(id);
+    saveMapStyleId(id);
+  }
+
   return (
-    <MapContainer
-      center={MALAYSIA_CENTER}
-      zoom={MALAYSIA_ZOOM}
-      className="h-full w-full"
-      scrollWheelZoom
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-        subdomains="abcd"
-        maxZoom={19}
-      />
-      {routeCoordinates && routeCoordinates.length > 1 && (
-        <Polyline positions={routeCoordinates} pathOptions={{ color: "#2563eb", weight: 4, opacity: 0.7 }} />
-      )}
-      {userLocation && (
-        <>
-          <Marker position={[userLocation.lat, userLocation.lng]} icon={USER_LOCATION_ICON} zIndexOffset={1000}>
-            <Popup>Your location</Popup>
-          </Marker>
-          {nearMeRadiusKm && (
-            <Circle
-              center={[userLocation.lat, userLocation.lng]}
-              radius={nearMeRadiusKm * 1000}
-              pathOptions={{ color: "#2563eb", weight: 1, fillOpacity: 0.06 }}
-            />
-          )}
-        </>
-      )}
-      {stations.map((s) => {
-        const status = availabilityStatus(s);
-        return (
-          <Marker
+    <div className="relative h-full w-full">
+      <MapContainer
+        center={MALAYSIA_CENTER}
+        zoom={MALAYSIA_ZOOM}
+        className="h-full w-full"
+        scrollWheelZoom
+      >
+        <TileLayer
+          key={style.id}
+          attribution={style.attribution}
+          url={style.url}
+          subdomains={style.subdomains}
+          maxZoom={19}
+        />
+        {routeCoordinates && routeCoordinates.length > 1 && (
+          <Polyline positions={routeCoordinates} pathOptions={{ color: "#2563eb", weight: 4, opacity: 0.7 }} />
+        )}
+        {userLocation && (
+          <>
+            <Marker position={[userLocation.lat, userLocation.lng]} icon={USER_LOCATION_ICON} zIndexOffset={1000}>
+              <Popup>Your location</Popup>
+            </Marker>
+            {nearMeRadiusKm && (
+              <Circle
+                center={[userLocation.lat, userLocation.lng]}
+                radius={nearMeRadiusKm * 1000}
+                pathOptions={{ color: "#2563eb", weight: 1, fillOpacity: 0.06 }}
+              />
+            )}
+          </>
+        )}
+        {stations.map((s) => {
+          const status = availabilityStatus(s);
+          return (
+            <Marker
+              key={s.id}
+              position={[s.lat, s.lng]}
+              icon={ICONS[status]}
+              eventHandlers={{ click: () => onSelect(s.id) }}
+            >
+              <Popup>
+                <div className="text-sm">
+                  <p className="font-semibold">{s.name}</p>
+                  <p className="text-gray-600">{s.operator} · {formatPricing(s.pricing)}</p>
+                  <p className="text-gray-600">
+                    {s.source === "community"
+                      ? `${s.bays.total} bay${s.bays.total === 1 ? "" : "s"} · availability not tracked`
+                      : `${s.bays.available}/${s.bays.total} bays available`}
+                  </p>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
+        <MapController station={selected} userLocation={userLocation} />
+      </MapContainer>
+
+      <div className="absolute right-2.5 top-2.5 z-[1000] flex gap-1 rounded-lg bg-white/95 dark:bg-gray-900/95 p-1 shadow-md backdrop-blur">
+        {MAP_STYLES.map((s) => (
+          <button
             key={s.id}
-            position={[s.lat, s.lng]}
-            icon={ICONS[status]}
-            eventHandlers={{ click: () => onSelect(s.id) }}
+            onClick={() => chooseStyle(s.id)}
+            title={s.name}
+            className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+              s.id === style.id
+                ? "bg-blue-600 text-white"
+                : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+            }`}
           >
-            <Popup>
-              <div className="text-sm">
-                <p className="font-semibold">{s.name}</p>
-                <p className="text-gray-600">{s.operator} · {formatPricing(s.pricing)}</p>
-                <p className="text-gray-600">
-                  {s.source === "community"
-                    ? `${s.bays.total} bay${s.bays.total === 1 ? "" : "s"} · availability not tracked`
-                    : `${s.bays.available}/${s.bays.total} bays available`}
-                </p>
-              </div>
-            </Popup>
-          </Marker>
-        );
-      })}
-      <MapController station={selected} userLocation={userLocation} />
-    </MapContainer>
+            {s.name}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

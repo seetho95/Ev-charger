@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "leaflet/dist/leaflet.css";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { FilterBar } from "./components/FilterBar";
 import { MapView } from "./components/MapView";
 import { StationDetail } from "./components/StationDetail";
@@ -91,14 +92,16 @@ function App() {
         </aside>
 
         <main className={`${mobilePanel === "map" ? "block" : "hidden"} flex-1 md:block`}>
-          <MapView
-            stations={visibleStations}
-            selectedId={selectedStationId}
-            onSelect={selectStation}
-            routeCoordinates={view === "trip" ? (tripResult?.routeCoordinates ?? undefined) : undefined}
-            userLocation={view === "map" ? userLocation : null}
-            nearMeRadiusKm={view === "map" && nearMeOnly ? NEAR_ME_RADIUS_KM : undefined}
-          />
+          <ErrorBoundary fallbackTitle="The map hit a problem and had to stop. Your stations and filters are still fine.">
+            <MapView
+              stations={visibleStations}
+              selectedId={selectedStationId}
+              onSelect={selectStation}
+              routeCoordinates={view === "trip" ? (tripResult?.routeCoordinates ?? undefined) : undefined}
+              userLocation={view === "map" ? userLocation : null}
+              nearMeRadiusKm={view === "map" && nearMeOnly ? NEAR_ME_RADIUS_KM : undefined}
+            />
+          </ErrorBoundary>
         </main>
 
         <button

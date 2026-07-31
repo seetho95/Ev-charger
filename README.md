@@ -6,7 +6,9 @@ availability, locations on a map, and a road-trip charging planner.
 ## Features
 
 - **Map view** of charging stations across Malaysia (OpenStreetMap/Leaflet
-  tiles via CARTO), color-coded by bay availability.
+  tiles via CARTO), color-coded by bay availability, with 4 selectable basemap
+  styles (Minimal, Bare, Voyager, Dark — top-right control, remembered
+  between visits).
 - **Filters** by network, state, connector type, and free-text search — the
   lists populate dynamically from whatever stations are actually loaded.
 - **Station details**: pricing (per kWh / per minute / flat / free / not
@@ -83,6 +85,15 @@ list restrict themselves to stations inside it — the list also sorts by
 distance. Toggle "Show all" / "Near me" at any time; "Recenter" re-requests
 your current position. If geolocation is denied or unsupported, the app
 just shows the full Malaysia-wide list with a small notice, same as before.
+
+The map is also wrapped in a React error boundary (`src/components/ErrorBoundary.tsx`):
+if Leaflet ever throws (e.g. an animation racing a container resize on a slow
+device), the map panel shows a "Try again" fallback instead of taking the
+whole app down. `src/components/MapView.tsx`'s `MapController` is the piece
+that had to get this right — it watches the map container with a
+`ResizeObserver` rather than guessing at visibility from CSS breakpoints, and
+waits two animation frames after a resize before flying the view, so it
+doesn't animate toward a stale, pre-resize position.
 
 ## Getting started
 
