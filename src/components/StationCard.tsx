@@ -9,7 +9,7 @@ interface StationCardProps {
 }
 
 export function StationCard({ station, selected, onClick, distanceKm }: StationCardProps) {
-  const status = availabilityStatus(station.bays);
+  const status = availabilityStatus(station);
   return (
     <button
       onClick={onClick}
@@ -32,7 +32,11 @@ export function StationCard({ station, selected, onClick, distanceKm }: StationC
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600 dark:text-gray-300">
         <span>{formatPricing(station.pricing)}</span>
-        <span>{station.bays.available}/{station.bays.total} bays free</span>
+        <span>
+          {station.source === "community"
+            ? `${station.bays.total} bay${station.bays.total === 1 ? "" : "s"} · not tracked`
+            : `${station.bays.available}/${station.bays.total} bays free`}
+        </span>
         {distanceKm !== undefined && <span>{distanceKm.toFixed(1)} km away</span>}
       </div>
     </button>

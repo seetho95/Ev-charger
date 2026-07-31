@@ -8,7 +8,7 @@ interface StationDetailProps {
 
 export function StationDetail({ station, onClose }: StationDetailProps) {
   if (!station) return null;
-  const status = availabilityStatus(station.bays);
+  const status = availabilityStatus(station);
 
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
@@ -31,13 +31,21 @@ export function StationDetail({ station, onClose }: StationDetailProps) {
       <div className="flex items-center gap-2 text-sm">
         <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STATUS_COLOR[status] }} />
         <span>{STATUS_LABEL[status]}</span>
-        <span className="text-gray-400">
-          ({station.bays.available} free / {station.bays.inUse} in use / {station.bays.offline} offline of {station.bays.total})
-        </span>
+        {station.source === "curated" && (
+          <span className="text-gray-400">
+            ({station.bays.available} free / {station.bays.inUse} in use / {station.bays.offline} offline of {station.bays.total})
+          </span>
+        )}
       </div>
-      <p className="text-xs text-gray-400">
-        Snapshot as of {new Date(station.bays.lastUpdated).toLocaleString("en-MY")}
-      </p>
+      {station.source === "curated" ? (
+        <p className="text-xs text-gray-400">
+          Snapshot as of {new Date(station.bays.lastUpdated).toLocaleString("en-MY")}
+        </p>
+      ) : (
+        <p className="text-xs text-gray-400">
+          {station.bays.total} bay{station.bays.total === 1 ? "" : "s"} listed · sourced from Open Charge Map (community-submitted, not a live feed)
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div>

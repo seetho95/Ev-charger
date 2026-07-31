@@ -11,6 +11,12 @@ html, body, #root {
   margin: 0;
 }
 
+/* 100vh includes the mobile browser's collapsible toolbar; 100dvh doesn't. */
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
+}
+
 body {
   font-family: system-ui, "Segoe UI", Roboto, sans-serif;
 }

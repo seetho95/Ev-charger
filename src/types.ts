@@ -1,4 +1,4 @@
-export type ConnectorType = "Type2" | "CCS2" | "CHAdeMO" | "GB/T" | "Tesla";
+export type ConnectorType = "Type2" | "CCS2" | "CHAdeMO" | "GB/T" | "Tesla" | "Other";
 
 export type CurrentType = "AC" | "DC";
 
@@ -9,7 +9,7 @@ export interface Connector {
   count: number;
 }
 
-export type PricingUnit = "perKWh" | "perMinute" | "flatSession" | "free";
+export type PricingUnit = "perKWh" | "perMinute" | "flatSession" | "free" | "unknown";
 
 export interface Pricing {
   unit: PricingUnit;
@@ -53,12 +53,16 @@ export type MalaysianState =
 
 export type AccessType = "public" | "members-only" | "hotel-guests";
 
+export type StationSource = "curated" | "community";
+
 export interface Station {
   id: string;
   name: string;
-  operator: Operator;
+  /** Free text once merged with external data; OPERATOR_DEFAULTS keys are the known curated networks. */
+  operator: string;
   address: string;
-  state: MalaysianState;
+  /** Free text once merged with external data; MalaysianState lists the curated set. */
+  state: string;
   lat: number;
   lng: number;
   connectors: Connector[];
@@ -68,6 +72,8 @@ export interface Station {
   operatingHours: string;
   access: AccessType;
   isHighwayCorridor: boolean; // useful for trip planner along expressways
+  /** "curated" = hand-verified with illustrative bay availability; "community" = Open Charge Map, location/specs only. */
+  source: StationSource;
   notes?: string;
 }
 

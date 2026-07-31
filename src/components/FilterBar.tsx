@@ -1,10 +1,14 @@
-import { ALL_OPERATORS, ALL_STATES } from "../data/stations";
+import { useMemo } from "react";
 import { useAppStore } from "../store";
 import type { ConnectorType } from "../types";
 
-const CONNECTOR_TYPES: ConnectorType[] = ["Type2", "CCS2", "CHAdeMO", "GB/T", "Tesla"];
+const CONNECTOR_TYPES: ConnectorType[] = ["Type2", "CCS2", "CHAdeMO", "GB/T", "Tesla", "Other"];
 
 export function FilterBar() {
+  const stations = useAppStore((s) => s.stations);
+  const stationsLoading = useAppStore((s) => s.stationsLoading);
+  const communityLoadError = useAppStore((s) => s.communityLoadError);
+  const loadCommunityStations = useAppStore((s) => s.loadCommunityStations);
   const filters = useAppStore((s) => s.filters);
   const toggleOperator = useAppStore((s) => s.toggleOperator);
   const toggleState = useAppStore((s) => s.toggleState);
@@ -14,6 +18,19 @@ export function FilterBar() {
   const clearFilters = useAppStore((s) => s.clearFilters);
   const refreshAvailability = useAppStore((s) => s.refreshAvailability);
   const lastRefreshed = useAppStore((s) => s.lastRefreshed);
+
+  const allOperators = useMemo(
+    () => Array.from(new Set(stations.map((s) => s.operator))).sort(),
+    [stations],
+  );
+  const allStates = useMemo(
+    () => Array.from(new Set(stations.map((s) => s.state))).sort(),
+    [stations],
+  );
+  const communityCount = useMemo(
+    () => stations.filter((s) => s.source === "community").length,
+    [stations],
+  );
 
   const activeCount =
     filters.operators.length + filters.states.length + filters.connectorTypes.length + (filters.onlyAvailable ? 1 : 0);
@@ -28,6 +45,23 @@ export function FilterBar() {
         className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-1.5 text-sm"
       />
 
+      {stationsLoading && (
+        <p className="text-xs text-gray-400">Loading community-sourced stations from Open Charge Map…</p>
+      )}
+      {!stationsLoading && communityCount > 0 && (
+        <p className="text-xs text-gray-400">
+          {communityCount} additional community-sourced station{communityCount === 1 ? "" : "s"} loaded (blue markers — availability not tracked).
+        </p>
+      )}
+      {!stationsLoading && communityLoadError && (
+        <p className="text-xs text-amber-600">
+          Couldn't reach Open Charge Map — showing curated stations only.{" "}
+          <button onClick={loadCommunityStations} className="underline">
+            Retry
+          </button>
+        </p>
+      )}
+
       <label className="flex items-center gap-2">
         <input
           type="checkbox"
@@ -39,8 +73,8 @@ export function FilterBar() {
 
       <div>
         <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">Network</p>
-        <div className="flex flex-wrap gap-1.5">
-          {ALL_OPERATORS.map((op) => (
+        <div className="flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">
+          {allOperators.map((op) => (
             <Chip key={op} active={filters.operators.includes(op)} onClick={() => toggleOperator(op)}>
               {op}
             </Chip>
@@ -50,8 +84,8 @@ export function FilterBar() {
 
       <div>
         <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">State</p>
-        <div className="flex flex-wrap gap-1.5">
-          {ALL_STATES.map((st) => (
+        <div className="flex max-h-24 flex-wrap gap-1.5 overflow-y-auto">
+          {allStates.map((st) => (
             <Chip key={st} active={filters.states.includes(st)} onClick={() => toggleState(st)}>
               {st}
             </Chip>
@@ -81,13 +115,13 @@ export function FilterBar() {
         <button
           onClick={refreshAvailability}
           className="text-xs rounded-md border border-gray-300 dark:border-gray-700 px-2 py-1 hover:bg-gray-50 dark:hover:bg-gray-800"
-          title="Simulated refresh — see README for data provenance notes"
+          title="Simulated refresh for curated stations — see README for data provenance notes"
         >
           ⟳ Refresh availability
         </button>
       </div>
       {lastRefreshed && (
-        <p className="text-xs text-gray-400">Last refreshed {lastRefreshed} (simulated)</p>
+        <p className="text-xs text-gray-400">Last refreshed {lastRefreshed} (simulated, curated stations only)</p>
       )}
     </div>
   );

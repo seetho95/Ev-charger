@@ -1,12 +1,14 @@
 import { create } from "zustand";
+import { fetchOpenChargeMapStations } from "./services/openChargeMap";
 import { getStations, simulateAvailabilityRefresh } from "./services/stationSource";
-import type { ConnectorType, MalaysianState, Operator, Station } from "./types";
+import { mergeStations } from "./utils/mergeStations";
+import type { ConnectorType, Station } from "./types";
 
 export type ViewMode = "map" | "trip";
 
 interface Filters {
-  operators: Operator[];
-  states: MalaysianState[];
+  operators: string[];
+  states: string[];
   connectorTypes: ConnectorType[];
   onlyAvailable: boolean;
   search: string;
@@ -14,19 +16,22 @@ interface Filters {
 
 interface AppState {
   stations: Station[];
+  stationsLoading: boolean;
+  communityLoadError: boolean;
   filters: Filters;
   selectedStationId: string | null;
   view: ViewMode;
   lastRefreshed: string;
   setView: (v: ViewMode) => void;
   selectStation: (id: string | null) => void;
-  toggleOperator: (op: Operator) => void;
-  toggleState: (s: MalaysianState) => void;
+  toggleOperator: (op: string) => void;
+  toggleState: (s: string) => void;
   toggleConnector: (c: ConnectorType) => void;
   setOnlyAvailable: (v: boolean) => void;
   setSearch: (v: string) => void;
   clearFilters: () => void;
   refreshAvailability: () => void;
+  loadCommunityStations: () => Promise<void>;
 }
 
 const EMPTY_FILTERS: Filters = {
@@ -37,8 +42,10 @@ const EMPTY_FILTERS: Filters = {
   search: "",
 };
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppState>((set, get) => ({
   stations: getStations(),
+  stationsLoading: false,
+  communityLoadError: false,
   filters: EMPTY_FILTERS,
   selectedStationId: null,
   view: "map",
@@ -75,6 +82,16 @@ export const useAppStore = create<AppState>((set) => ({
       stations: simulateAvailabilityRefresh(state.stations),
       lastRefreshed: new Date().toLocaleTimeString("en-MY", { hour12: false }),
     })),
+  loadCommunityStations: async () => {
+    set({ stationsLoading: true });
+    const community = await fetchOpenChargeMapStations();
+    if (community.length === 0) {
+      set({ stationsLoading: false, communityLoadError: true });
+      return;
+    }
+    const curated = get().stations.filter((s) => s.source === "curated");
+    set({ stations: mergeStations(curated, community), stationsLoading: false, communityLoadError: false });
+  },
 }));
 
 function toggleInList<T>(list: T[], value: T): T[] {

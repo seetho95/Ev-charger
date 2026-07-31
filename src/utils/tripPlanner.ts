@@ -39,6 +39,8 @@ function estimateCost(station: Station, kWhNeeded: number, minutes: number): num
       return station.pricing.rateMYR;
     case "free":
       return 0;
+    case "unknown":
+      return 0;
   }
 }
 

@@ -74,6 +74,7 @@ export function TripPlanner({ onResult, onSelectStop }: TripPlannerProps) {
 
   const totalCost = result?.stops.reduce((sum, s) => sum + s.estimatedCostMYR, 0) ?? 0;
   const totalChargeMinutes = result?.stops.reduce((sum, s) => sum + s.estimatedChargeMinutes, 0) ?? 0;
+  const hasUnknownPricingStop = result?.stops.some((s) => s.station.pricing.unit === "unknown") ?? false;
 
   return (
     <div className="space-y-5 text-sm">
@@ -137,7 +138,10 @@ export function TripPlanner({ onResult, onSelectStop }: TripPlannerProps) {
             <p><span className="font-medium">{result.totalDistanceKm.toFixed(0)} km</span> total distance</p>
             <p>{result.stops.length} charging stop{result.stops.length === 1 ? "" : "s"} needed</p>
             {result.stops.length > 0 && (
-              <p>~{Math.round(totalChargeMinutes)} min charging · ~RM {totalCost.toFixed(2)} est. cost</p>
+              <p>
+                ~{Math.round(totalChargeMinutes)} min charging · ~RM {totalCost.toFixed(2)} est. cost
+                {hasUnknownPricingStop && " (excludes stop(s) with unlisted pricing)"}
+              </p>
             )}
             {routeApproximate && (
               <p className="text-xs text-amber-600">
@@ -167,7 +171,8 @@ export function TripPlanner({ onResult, onSelectStop }: TripPlannerProps) {
                 </p>
                 <p className="text-xs text-gray-600 dark:text-gray-300">
                   Arrive at ~{stop.arrivalBatteryPercent.toFixed(0)}% → charge to {stop.chargeToPercent}%
-                  {" · "}~{Math.round(stop.estimatedChargeMinutes)} min · ~RM {stop.estimatedCostMYR.toFixed(2)}
+                  {" · "}~{Math.round(stop.estimatedChargeMinutes)} min ·{" "}
+                  {stop.station.pricing.unit === "unknown" ? "cost unknown" : `~RM ${stop.estimatedCostMYR.toFixed(2)}`}
                 </p>
               </button>
             ))}

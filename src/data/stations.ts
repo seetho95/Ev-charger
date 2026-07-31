@@ -1,7 +1,8 @@
-import type { BaySnapshot, Station } from "../types";
+import type { BaySnapshot, Operator, Station } from "../types";
 import { OPERATOR_DEFAULTS } from "./operatorDefaults";
 
-type StationInput = Omit<Station, "connectors" | "pricing" | "bays"> & {
+type StationInput = Omit<Station, "connectors" | "pricing" | "bays" | "operator" | "source"> & {
+  operator: Operator;
   connectors?: Station["connectors"];
   pricing?: Station["pricing"];
   bays: Omit<BaySnapshot, "total">;
@@ -16,6 +17,7 @@ function build(input: StationInput): Station {
     connectors,
     pricing: input.pricing ?? defaults.pricing,
     bays: { ...input.bays, total },
+    source: "curated",
   };
 }
 
@@ -732,13 +734,3 @@ export const STATIONS: Station[] = [
     isHighwayCorridor: false,
   }),
 ];
-
-export const ALL_STATES: Station["state"][] = Array.from(
-  new Set(STATIONS.map((s) => s.state)),
-).sort();
-
-export const ALL_OPERATORS: Station["operator"][] = Array.from(
-  new Set(STATIONS.map((s) => s.operator)),
-).sort();
-
-export const HIGHWAY_STATIONS = STATIONS.filter((s) => s.isHighwayCorridor);

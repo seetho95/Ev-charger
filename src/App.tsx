@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import { FilterBar } from "./components/FilterBar";
 import { MapView } from "./components/MapView";
@@ -17,9 +17,14 @@ function App() {
   const filters = useAppStore((s) => s.filters);
   const selectedStationId = useAppStore((s) => s.selectedStationId);
   const selectStation = useAppStore((s) => s.selectStation);
+  const loadCommunityStations = useAppStore((s) => s.loadCommunityStations);
 
   const [tripResult, setTripResult] = useState<TripPlanResult | null>(null);
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("panel");
+
+  useEffect(() => {
+    loadCommunityStations();
+  }, [loadCommunityStations]);
 
   const visibleStations =
     view === "map" ? stations.filter((s) => stationMatchesFilters(s, filters)) : stations;
@@ -27,7 +32,7 @@ function App() {
   const selectedStation = stations.find((s) => s.id === selectedStationId);
 
   return (
-    <div className="flex h-screen w-screen flex-col bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+    <div className="app-shell flex w-screen flex-col bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
       <header className="flex items-center justify-between gap-2 border-b border-gray-200 dark:border-gray-800 px-3 py-2.5 sm:px-4 sm:py-3">
         <div className="min-w-0">
           <h1 className="text-base sm:text-lg font-semibold truncate">MY EV Charge</h1>
@@ -81,6 +86,7 @@ function App() {
             selectedId={selectedStationId}
             onSelect={selectStation}
             routeCoordinates={view === "trip" ? (tripResult?.routeCoordinates ?? undefined) : undefined}
+            visible={mobilePanel === "map"}
           />
         </main>
 
