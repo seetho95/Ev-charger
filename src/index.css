@@ -47,6 +47,38 @@ body {
   transform: rotate(45deg);
 }
 
+.user-location-marker {
+  position: relative;
+}
+
+.user-location-marker .user-dot {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #2563eb;
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+
+.user-location-marker .user-dot-pulse {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.35);
+  animation: user-dot-pulse 2s ease-out infinite;
+}
+
+@keyframes user-dot-pulse {
+  0% { transform: scale(0.4); opacity: 1; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

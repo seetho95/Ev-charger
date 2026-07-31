@@ -1,21 +1,16 @@
-import { useMemo } from "react";
-import { stationMatchesFilters, useAppStore } from "../store";
+import { useAppStore } from "../store";
+import { useVisibleStations } from "../hooks/useVisibleStations";
 import { StationCard } from "./StationCard";
 
 export function StationList() {
-  const stations = useAppStore((s) => s.stations);
-  const filters = useAppStore((s) => s.filters);
+  const allStations = useAppStore((s) => s.stations);
   const selectedStationId = useAppStore((s) => s.selectedStationId);
   const selectStation = useAppStore((s) => s.selectStation);
-
-  const filtered = useMemo(
-    () => stations.filter((s) => stationMatchesFilters(s, filters)),
-    [stations, filters],
-  );
+  const { stations: filtered, distances } = useVisibleStations();
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-gray-400">{filtered.length} of {stations.length} stations</p>
+      <p className="text-xs text-gray-400">{filtered.length} of {allStations.length} stations</p>
       <div className="space-y-2 max-h-full overflow-y-auto pr-1">
         {filtered.map((s) => (
           <StationCard
@@ -23,6 +18,7 @@ export function StationList() {
             station={s}
             selected={s.id === selectedStationId}
             onClick={() => selectStation(s.id)}
+            distanceKm={distances.get(s.id)}
           />
         ))}
         {filtered.length === 0 && (

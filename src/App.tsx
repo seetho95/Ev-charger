@@ -5,8 +5,9 @@ import { MapView } from "./components/MapView";
 import { StationDetail } from "./components/StationDetail";
 import { StationList } from "./components/StationList";
 import { TripPlanner } from "./components/TripPlanner";
-import { stationMatchesFilters, useAppStore } from "./store";
+import { NEAR_ME_RADIUS_KM, useAppStore } from "./store";
 import type { TripPlanResult } from "./types";
+import { useVisibleStations } from "./hooks/useVisibleStations";
 
 type MobilePanel = "panel" | "map";
 
@@ -14,10 +15,13 @@ function App() {
   const view = useAppStore((s) => s.view);
   const setView = useAppStore((s) => s.setView);
   const stations = useAppStore((s) => s.stations);
-  const filters = useAppStore((s) => s.filters);
   const selectedStationId = useAppStore((s) => s.selectedStationId);
   const selectStation = useAppStore((s) => s.selectStation);
   const loadCommunityStations = useAppStore((s) => s.loadCommunityStations);
+  const userLocation = useAppStore((s) => s.userLocation);
+  const locationStatus = useAppStore((s) => s.locationStatus);
+  const nearMeOnly = useAppStore((s) => s.nearMeOnly);
+  const locateMe = useAppStore((s) => s.locateMe);
 
   const [tripResult, setTripResult] = useState<TripPlanResult | null>(null);
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("panel");
@@ -26,8 +30,14 @@ function App() {
     loadCommunityStations();
   }, [loadCommunityStations]);
 
-  const visibleStations =
-    view === "map" ? stations.filter((s) => stationMatchesFilters(s, filters)) : stations;
+  useEffect(() => {
+    if (view === "map" && locationStatus === "idle") {
+      locateMe();
+    }
+  }, [view, locationStatus, locateMe]);
+
+  const { stations: exploreStations } = useVisibleStations();
+  const visibleStations = view === "map" ? exploreStations : stations;
 
   const selectedStation = stations.find((s) => s.id === selectedStationId);
 
@@ -86,7 +96,8 @@ function App() {
             selectedId={selectedStationId}
             onSelect={selectStation}
             routeCoordinates={view === "trip" ? (tripResult?.routeCoordinates ?? undefined) : undefined}
-            visible={mobilePanel === "map"}
+            userLocation={view === "map" ? userLocation : null}
+            nearMeRadiusKm={view === "map" && nearMeOnly ? NEAR_ME_RADIUS_KM : undefined}
           />
         </main>
 

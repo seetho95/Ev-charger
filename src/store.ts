@@ -6,6 +6,10 @@ import type { ConnectorType, Station } from "./types";
 
 export type ViewMode = "map" | "trip";
 
+export type LocationStatus = "idle" | "loading" | "granted" | "denied" | "unsupported";
+
+export const NEAR_ME_RADIUS_KM = 5;
+
 interface Filters {
   operators: string[];
   states: string[];
@@ -22,6 +26,9 @@ interface AppState {
   selectedStationId: string | null;
   view: ViewMode;
   lastRefreshed: string;
+  userLocation: { lat: number; lng: number } | null;
+  locationStatus: LocationStatus;
+  nearMeOnly: boolean;
   setView: (v: ViewMode) => void;
   selectStation: (id: string | null) => void;
   toggleOperator: (op: string) => void;
@@ -32,6 +39,8 @@ interface AppState {
   clearFilters: () => void;
   refreshAvailability: () => void;
   loadCommunityStations: () => Promise<void>;
+  locateMe: () => void;
+  setNearMeOnly: (v: boolean) => void;
 }
 
 const EMPTY_FILTERS: Filters = {
@@ -50,6 +59,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedStationId: null,
   view: "map",
   lastRefreshed: "",
+  userLocation: null,
+  locationStatus: "idle",
+  nearMeOnly: false,
   setView: (v) => set({ view: v }),
   selectStation: (id) => set({ selectedStationId: id }),
   toggleOperator: (op) =>
@@ -92,6 +104,25 @@ export const useAppStore = create<AppState>((set, get) => ({
     const curated = get().stations.filter((s) => s.source === "curated");
     set({ stations: mergeStations(curated, community), stationsLoading: false, communityLoadError: false });
   },
+  locateMe: () => {
+    if (!("geolocation" in navigator)) {
+      set({ locationStatus: "unsupported" });
+      return;
+    }
+    set({ locationStatus: "loading" });
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        set({
+          userLocation: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+          locationStatus: "granted",
+          nearMeOnly: true,
+        });
+      },
+      () => set({ locationStatus: "denied" }),
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
+    );
+  },
+  setNearMeOnly: (v) => set({ nearMeOnly: v }),
 }));
 
 function toggleInList<T>(list: T[], value: T): T[] {

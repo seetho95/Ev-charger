@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useAppStore } from "../store";
+import { type LocationStatus, NEAR_ME_RADIUS_KM, useAppStore } from "../store";
 import type { ConnectorType } from "../types";
 
 const CONNECTOR_TYPES: ConnectorType[] = ["Type2", "CCS2", "CHAdeMO", "GB/T", "Tesla", "Other"];
@@ -18,6 +18,10 @@ export function FilterBar() {
   const clearFilters = useAppStore((s) => s.clearFilters);
   const refreshAvailability = useAppStore((s) => s.refreshAvailability);
   const lastRefreshed = useAppStore((s) => s.lastRefreshed);
+  const locationStatus = useAppStore((s) => s.locationStatus);
+  const nearMeOnly = useAppStore((s) => s.nearMeOnly);
+  const setNearMeOnly = useAppStore((s) => s.setNearMeOnly);
+  const locateMe = useAppStore((s) => s.locateMe);
 
   const allOperators = useMemo(
     () => Array.from(new Set(stations.map((s) => s.operator))).sort(),
@@ -43,6 +47,13 @@ export function FilterBar() {
         value={filters.search}
         onChange={(e) => setSearch(e.target.value)}
         className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-1.5 text-sm"
+      />
+
+      <LocationBar
+        status={locationStatus}
+        nearMeOnly={nearMeOnly}
+        onLocateMe={locateMe}
+        onToggleNearMe={() => setNearMeOnly(!nearMeOnly)}
       />
 
       {stationsLoading && (
@@ -124,6 +135,60 @@ export function FilterBar() {
         <p className="text-xs text-gray-400">Last refreshed {lastRefreshed} (simulated, curated stations only)</p>
       )}
     </div>
+  );
+}
+
+function LocationBar({
+  status,
+  nearMeOnly,
+  onLocateMe,
+  onToggleNearMe,
+}: {
+  status: LocationStatus;
+  nearMeOnly: boolean;
+  onLocateMe: () => void;
+  onToggleNearMe: () => void;
+}) {
+  if (status === "loading") {
+    return <p className="text-xs text-gray-400">📍 Finding your location…</p>;
+  }
+  if (status === "denied") {
+    return (
+      <p className="text-xs text-amber-600">
+        Location access denied — showing all Malaysia.{" "}
+        <button onClick={onLocateMe} className="underline">
+          Try again
+        </button>
+      </p>
+    );
+  }
+  if (status === "unsupported") {
+    return <p className="text-xs text-gray-400">Geolocation isn't available in this browser.</p>;
+  }
+  if (status === "granted") {
+    return (
+      <div className="flex items-center justify-between rounded-md bg-blue-50 dark:bg-blue-950/40 px-3 py-1.5">
+        <span className="text-xs text-blue-700 dark:text-blue-300">
+          {nearMeOnly ? `📍 Within ${NEAR_ME_RADIUS_KM} km of you` : "📍 Showing all of Malaysia"}
+        </span>
+        <div className="flex gap-2">
+          <button onClick={onToggleNearMe} className="text-xs underline text-blue-700 dark:text-blue-300">
+            {nearMeOnly ? "Show all" : "Near me"}
+          </button>
+          <button onClick={onLocateMe} className="text-xs underline text-blue-700 dark:text-blue-300">
+            Recenter
+          </button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <button
+      onClick={onLocateMe}
+      className="text-xs rounded-md border border-gray-300 dark:border-gray-700 px-2 py-1 hover:bg-gray-50 dark:hover:bg-gray-800"
+    >
+      📍 Use my location
+    </button>
   );
 }
 

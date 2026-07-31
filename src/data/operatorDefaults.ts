@@ -53,4 +53,26 @@ export const OPERATOR_DEFAULTS: Record<
     ],
     pricing: { unit: "perKWh", rateMYR: 1.15 },
   },
+  Yinson: {
+    connectors: [
+      { type: "Type2", current: "AC", powerKW: 22, count: 2 },
+      { type: "CCS2", current: "DC", powerKW: 100, count: 1 },
+    ],
+    pricing: { unit: "perKWh", rateMYR: 1.25 },
+  },
+  ChargeSini: {
+    connectors: [{ type: "Type2", current: "AC", powerKW: 22, count: 2 }],
+    pricing: { unit: "perKWh", rateMYR: 1.0 },
+  },
+  "Charge N Go": {
+    connectors: [
+      { type: "Type2", current: "AC", powerKW: 22, count: 1 },
+      { type: "CCS2", current: "DC", powerKW: 60, count: 1 },
+    ],
+    pricing: { unit: "perKWh", rateMYR: 1.2 },
+  },
+  GoToU: {
+    connectors: [{ type: "Type2", current: "AC", powerKW: 7, count: 2 }],
+    pricing: { unit: "perKWh", rateMYR: 0.9 },
+  },
 };

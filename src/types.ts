@@ -36,7 +36,11 @@ export type Operator =
   | "DC HUB"
   | "Tesla"
   | "ParkEasy"
-  | "EV Connection";
+  | "EV Connection"
+  | "Yinson"
+  | "ChargeSini"
+  | "Charge N Go"
+  | "GoToU";
 
 export type MalaysianState =
   | "Kuala Lumpur"

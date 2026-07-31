@@ -18,15 +18,20 @@ availability, locations on a map, and a road-trip charging planner.
   cost at each stop.
 - **Installable as an app** on Android/iOS/desktop (PWA) — see
   [Installing on your phone](#installing-on-your-phone) below.
+- **"Near me"**: on opening the Explore view, the app asks for your location
+  and shows every charger within 5 km, sorted by distance, with a "Show all"
+  toggle to go back to the full Malaysia-wide list at any time.
 
 ## Data provenance — please read
 
 Malaysia does not have one unified public API that exposes real-time,
 bay-level availability across charge point operators — each network
 (ChargEV, Gentari, JomCharge, Shell Recharge, DC HUB, Tesla, ParkEasy, EV
-Connection, etc.) runs its own closed app/API. The app combines two sources,
-visually distinguished on the map (green/red/gray pins vs. blue pins) and in
-every list/detail view:
+Connection, Yinson, ChargeSini, Charge N Go, GoToU, etc.) runs its own closed
+app/API, and commercial crowdsourcing platforms like PlugShare are not open
+data — this app does not scrape them. The app combines two legitimate
+sources instead, visually distinguished on the map (green/red/gray pins vs.
+blue pins) and in every list/detail view:
 
 1. **Curated stations** (`src/data/stations.ts`) — real, well-known locations
    (malls, highway rest-and-service areas, city centres) with representative
@@ -45,6 +50,14 @@ every list/detail view:
    Duplicates within ~300m of a curated station are dropped in favour of the
    richer curated entry (`src/utils/mergeStations.ts`).
 
+Yinson, ChargeSini, Charge N Go, and GoToU are registered as known networks
+(`src/data/operatorDefaults.ts`, representative connector/pricing templates)
+so they display consistently the moment a station from them appears — via
+Open Charge Map, or via a curated entry you add yourself in
+`src/data/stations.ts` if you have a verified real address for one. Adding
+made-up addresses for real networks would misdirect a driver, so the seed
+data doesn't include any until they're confirmed.
+
 If Open Charge Map is unreachable, the app silently falls back to the
 curated list only (with a small retry notice in the filter panel) — always
 consult the relevant operator's own app for guaranteed-accurate pricing and
@@ -60,6 +73,16 @@ and the OSRM demo server — which are rate-limited and best-effort. If either
 is unreachable, the planner falls back to a quick-pick list of major
 Malaysian cities (no network needed) and a straight-line distance estimate,
 clearly labelled as such in the UI.
+
+## "Near me"
+
+Opening the Explore view triggers a browser geolocation request (or tap
+"Use my location" if you skipped/denied it). Once granted, the map flies to
+your location, draws a 5 km radius circle, and both the map and the sidebar
+list restrict themselves to stations inside it — the list also sorts by
+distance. Toggle "Show all" / "Near me" at any time; "Recenter" re-requests
+your current position. If geolocation is denied or unsupported, the app
+just shows the full Malaysia-wide list with a small notice, same as before.
 
 ## Getting started
 
@@ -95,14 +118,19 @@ src/
     operatorDefaults.ts      Default connectors/pricing per network
     cities.ts                Quick-pick city list for the trip planner
   services/
-    stationSource.ts         Station data source (swap in a real API here)
+    stationSource.ts         Curated station data source
+    openChargeMap.ts          Open Charge Map fetch + mapping to Station
     routing.ts                Geocoding + driving directions (Nominatim/OSRM)
   utils/
     geo.ts                    Distance calculations, route projection
+    mergeStations.ts          Dedupe curated vs. community stations
     tripPlanner.ts            Charging-stop planning algorithm
     format.ts                 Pricing/availability display helpers
+  hooks/
+    useVisibleStations.ts     Shared filter/near-me/sort logic (map + list)
   components/                Map, list, filters, detail panel, trip planner UI
-  store.ts                    Global app state (zustand)
+  store.ts                    Global app state (zustand) — filters, stations,
+                               geolocation
 ```
 
 ## Trip planner algorithm
