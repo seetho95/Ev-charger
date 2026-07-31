@@ -11,7 +11,13 @@ import type { Connector, ConnectorType, CurrentType, Station } from "../types";
  */
 
 const OCM_ENDPOINT = "https://api.openchargemap.io/v3/poi/";
-const FETCH_TIMEOUT_MS = 10_000;
+const FETCH_TIMEOUT_MS = 15_000;
+const MAX_ATTEMPTS = 2;
+const RETRY_DELAY_MS = 1_500;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 interface OcmConnection {
   ConnectionType?: { Title?: string };
@@ -108,13 +114,7 @@ export function mapPoiToStation(poi: OcmPoi): Station | null {
   };
 }
 
-/**
- * Fetches Malaysian charging locations from Open Charge Map. Returns an
- * empty array (never throws) on network failure or malformed responses, so
- * callers can treat "no community data" the same as "fetch failed" and just
- * keep showing the curated dataset.
- */
-export async function fetchOpenChargeMapStations(): Promise<Station[]> {
+async function fetchOnce(): Promise<Station[]> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
@@ -122,7 +122,10 @@ export async function fetchOpenChargeMapStations(): Promise<Station[]> {
     const url = new URL(OCM_ENDPOINT);
     url.searchParams.set("output", "json");
     url.searchParams.set("countrycode", "MY");
-    url.searchParams.set("maxresults", "1000");
+    // Kept modest rather than the full remote max — a smaller, faster
+    // response is more likely to complete within FETCH_TIMEOUT_MS on a
+    // mobile connection than a larger one that just times out instead.
+    url.searchParams.set("maxresults", "500");
     url.searchParams.set("compact", "true");
 
     const res = await fetch(url.toString(), {
@@ -132,12 +135,35 @@ export async function fetchOpenChargeMapStations(): Promise<Station[]> {
     if (!res.ok) throw new Error(`Open Charge Map request failed (${res.status})`);
 
     const data = (await res.json()) as OcmPoi[];
-    if (!Array.isArray(data)) return [];
+    if (!Array.isArray(data)) throw new Error("Open Charge Map returned an unexpected response shape");
 
     return data.map(mapPoiToStation).filter((s): s is Station => s !== null);
-  } catch {
-    return [];
   } finally {
     clearTimeout(timeout);
   }
+}
+
+/**
+ * Fetches Malaysian charging locations from Open Charge Map. Returns an
+ * empty array (never throws) on network failure or malformed responses, so
+ * callers can treat "no community data" the same as "fetch failed" and just
+ * keep showing the curated dataset. Retries once after a short delay, since
+ * a single dropped request on a mobile connection shouldn't hide the whole
+ * community layer for the rest of the session.
+ */
+export async function fetchOpenChargeMapStations(): Promise<Station[]> {
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      return await fetchOnce();
+    } catch (err) {
+      const isLastAttempt = attempt === MAX_ATTEMPTS;
+      console.error(
+        `Open Charge Map fetch failed (attempt ${attempt}/${MAX_ATTEMPTS})${isLastAttempt ? ", giving up" : ", retrying"}:`,
+        err,
+      );
+      if (isLastAttempt) return [];
+      await sleep(RETRY_DELAY_MS);
+    }
+  }
+  return [];
 }

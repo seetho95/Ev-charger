@@ -66,7 +66,8 @@ export function FilterBar() {
       )}
       {!stationsLoading && communityLoadError && (
         <p className="text-xs text-amber-600">
-          Couldn't reach Open Charge Map — showing curated stations only.{" "}
+          Extra community stations aren't available right now — the curated
+          stations below are unaffected.{" "}
           <button onClick={loadCommunityStations} className="underline">
             Retry
           </button>
